@@ -47,7 +47,7 @@ public class MainActivity extends Activity {
     private boolean doublePressed = false;
     private boolean debug = false;
 
-    private static final String TAG = "SmartCardReader";
+    private static final String TAG = "0000";
     private static final boolean D = true;
 
     // Message types sent from the BluetoothChatService Handler
@@ -108,6 +108,7 @@ public class MainActivity extends Activity {
         if(isMyServiceRunning(service_Smartcard.class.getName())){
             stopService(new Intent(this, service_Smartcard.class));
         }
+
     }
 
     public void keepScreenOn(boolean screen) {
@@ -421,6 +422,7 @@ public class MainActivity extends Activity {
         if ( nfcAdapter != null ) {
             nfcAdapter.disableForegroundDispatch(this);
         }
+
         stopSCservice();
         connectionStoped();
     }
