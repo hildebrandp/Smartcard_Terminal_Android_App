@@ -168,7 +168,6 @@ public class MainActivity extends Activity {
         IntentResult scanningResult = IntentIntegrator.parseActivityResult(requestCode, resultCode, intent);
 
         if (resultCode != 0) {
-
             String scanContent = scanningResult.getContents();
             //formatTxt.setText("FORMAT: " + scanFormat);
 
