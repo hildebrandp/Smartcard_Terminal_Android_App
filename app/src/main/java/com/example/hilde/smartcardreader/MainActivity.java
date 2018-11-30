@@ -44,10 +44,9 @@ public class MainActivity extends Activity {
     private Button scanQR_Code;
     private bluetoothDevice btDevice;
     private boolean doubleBackToExitPressedOnce = false;
-    private boolean doublePressed = false;
     private boolean debug = false;
 
-    private static final String TAG = "0000";
+    private static final String TAG = "SC-Terminal";
     private static final boolean D = true;
 
     // Message types sent from the BluetoothChatService Handler
@@ -78,6 +77,9 @@ public class MainActivity extends Activity {
     Intent intent1;
     private CryptLib _crypt;
 
+    private Boolean encryptData = false;
+    private diffieHellman dh_helper;
+
     /**
      * Smartcard
      */
@@ -96,7 +98,7 @@ public class MainActivity extends Activity {
                 String resultCode = bundle.getString("RESULT");
                 if (resultCode.equals("TRUE")) {
                     systemLog("Smartcard disconnected.");
-                    sendNewMessage(1, "smartcard_disconnected");
+                    sendNewMessage(0,1, "smartcard_disconnected");
                     keepScreenOn(false);
                     stopSCservice();
                 }
@@ -156,7 +158,7 @@ public class MainActivity extends Activity {
             IntentIntegrator scanIntegrator = new IntentIntegrator(this);
             scanIntegrator.initiateScan();
         } else {
-            sendNewMessage(1, "application_stop");
+            sendNewMessage(0,1, "application_stop");
             mChatService.stop();
             mConversationArrayAdapter.clear();
             systemLog("Connection Stopped.");
@@ -173,16 +175,22 @@ public class MainActivity extends Activity {
 
             String tmp[] = scanContent.split(">>");
 
-            //btName.setText(tmp[0]);
-            btDevice = new bluetoothDevice(tmp[0], tmp[1], tmp[2], tmp[3], tmp[4]);
+            if (tmp.length == 5){
+                btDevice = new bluetoothDevice(tmp[0], tmp[1], tmp[2], tmp[3], tmp[3]);
+                dh_helper = new diffieHellman(btDevice.getdh_pub_p(), btDevice.getdh_pub_g(), btDevice.getdh_pub_B());
+                if(D) Log.i(TAG, "Diffie Hellman Shared Secret: " + dh_helper.Get_shared_secret());
+            } else{
+                btDevice = new bluetoothDevice(tmp[0], "", "", "", tmp[1]);
+            }
+
             // Get the BLuetoothDevice object
             BluetoothDevice device = mBluetoothAdapter.getRemoteDevice(btDevice.getMACAddress());
             // Attempt to connect to the device
             systemLog(btDevice.getMACAddress());
             mChatService.connect(device);
 
-            if(D) Log.e(TAG, "Crypto AES>> " + btDevice.getBtAESKey());
-            if(D) Log.e(TAG, "Crypto Seed>> " + btDevice.getBtSeed());
+            //if(D) Log.e(TAG, "Crypto AES>> " + btDevice.getBtAESKey());
+            //if(D) Log.e(TAG, "Crypto Seed>> " + btDevice.getBtSeed());
             if(btDevice.getScDebug().equals("1")) {
                 debug = true;
             } else {
@@ -237,7 +245,7 @@ public class MainActivity extends Activity {
             myNFCTag = IsoDep.get(t);
 
             systemLog("Smartcard discovered.");
-            sendNewMessage(1, "smartcard_discovered");
+            sendNewMessage(0,1, "smartcard_discovered");
 
             if( !myNFCTag.isConnected() ) {
                 try {
@@ -256,7 +264,7 @@ public class MainActivity extends Activity {
                 tagID = byteToHexString(t.getId());
 
                 systemLog("Smartcard connected.");
-                sendNewMessage(1, "smartcard_connected");
+                sendNewMessage(0,1, "smartcard_connected");
 
                 keepScreenOn(true);
 
@@ -267,7 +275,7 @@ public class MainActivity extends Activity {
                 //}
             } else {
                 systemLog("Smartcard connection refused.");
-                sendNewMessage(1, "smartcard_connection_refused");
+                sendNewMessage(0,1, "smartcard_connection_refused");
             }
         }
     }
@@ -414,7 +422,7 @@ public class MainActivity extends Activity {
         if(D) Log.e(TAG, "--- ON DESTROY ---");
 
         if (mChatService != null) {
-            sendNewMessage(1, "application_stop");
+            sendNewMessage(0, 1, "application_stop");
             mChatService.stop();
         }
 
@@ -449,7 +457,17 @@ public class MainActivity extends Activity {
                                 // TODO Auto-generated catch block
                                 e.printStackTrace();
                             }
-                            sendNewMessage(0, btDevice.getBtPIN());
+                            if (btDevice.getdh_pub_p().length() > 0){
+                                sendNewMessage(0, 0, "connected>>" + dh_helper.Get_public_A());
+                            } else{
+                                sendNewMessage(0, 0, "connected");
+                            }
+
+                            try{
+                                btDevice.set_AES_KEY(_crypt.SHA256(dh_helper.Get_shared_secret(), 32));
+                                btDevice.set_AES_IV(_crypt.SHA256(dh_helper.Get_shared_secret(), 16));
+                                encryptData = true;
+                            } catch (Exception e){}
                             break;
                         case service_Bluetooth.STATE_CONNECTING:
                             //btName.setText("Connecting...");
@@ -503,7 +521,7 @@ public class MainActivity extends Activity {
      * Sends a message.
      * @param message  A string of text to send.
      */
-    public void sendNewMessage(int code, String message) {
+    public void sendNewMessage(int id, int code, String message) {
         // Check that we're actually connected before trying anything
         if (mChatService.getState() != service_Bluetooth.STATE_CONNECTED) {
             Toast.makeText(this, "Not Connected.", Toast.LENGTH_SHORT).show();
@@ -513,18 +531,18 @@ public class MainActivity extends Activity {
         // Check that there's actually something to send
         if (message.length() > 0) {
             if (D) Log.d(TAG, "Send Message:" + message);
-            try {
-                message = _crypt.encrypt(message, btDevice.getBtAESKey(), btDevice.getBtSeed()); //encrypt
-                message = message.replaceAll("\n", "");
-                message = message + "\n";
-                if (D) Log.d(TAG, "Encrypted Message:" + message);
-            } catch (Exception e) {
-                // TODO Auto-generated catch block
-                e.printStackTrace();
+            if (encryptData){
+                try {
+                    message = _crypt.encrypt(message, btDevice.get_AES_KEY(), btDevice.get_AES_IV()); //encrypt
+                    message = message.replaceAll("\n", "");
+                    if (D) Log.d(TAG, "Encrypted Message:" + message);
+                } catch (Exception e) {
+                    // TODO Auto-generated catch block
+                    e.printStackTrace();
+                }
             }
 
-            //message = code + ">>" + message + "\n";
-            message = code + ">>" + message;
+            message = id + ">>" + code + ">>" + message + "\n";
             // Get the message bytes and tell the BluetoothChatService to write
             byte[] send = message.getBytes();
             mChatService.write(send);
@@ -533,43 +551,43 @@ public class MainActivity extends Activity {
 
     private void receiveMessage(String message) {
         String msg[] = message.split(">>");
-        checkMessage(Integer.valueOf(msg[0]), msg[1]);
+        checkMessage(Integer.valueOf(msg[0]), Integer.valueOf(msg[1]), msg[2]);
     }
 
-    private void checkMessage(int code, String msg) {
-        try {
-            msg = _crypt.decrypt(msg, btDevice.getBtAESKey(),btDevice.getBtSeed()); //decrypt
-        } catch (Exception e) {
-            // TODO Auto-generated catch block
-            e.printStackTrace();
+    private void checkMessage(int id, int code, String msg) {
+        if (encryptData){
+            try {
+                msg = _crypt.decrypt(msg, btDevice.get_AES_KEY(),btDevice.get_AES_IV()); //decrypt
+            } catch (Exception e) {
+                // TODO Auto-generated catch block
+                e.printStackTrace();
+            }
+        } else{
+            msg = msg.replaceAll("\n", "");
         }
-        if (D) Log.d(TAG, "Received Message:" + msg);
+
+        if (D) Log.d(TAG, "Received Message:" + msg );
         switch (code) {
             /** System Message*/
             case 1:
-                switch (msg) {
-                    case "pin_correct":
-                        systemLog("Successfully Connected");
-                        btName.setText(mConnectedDeviceName);
-                        scanQR_Code.setText("Bluetooth Disconnect");
-                        scanQR_Code.setClickable(true);
-                        startNFC();
-                        break;
-                    case "pin_wrong":
-                        systemLog("Wrong PIN.");
-                        scanQR_Code.setText("Bluetooth Connect");
-                        scanQR_Code.setClickable(true);
-                        btName.setText("Not Connected");
-                        keepScreenOn(false);
-                        break;
-                    case "application_stop":
-                        mChatService.stop();
-                        mConversationArrayAdapter.clear();
-                        systemLog("Connection Stopped.");
-                        break;
-                    default:
-                        systemLog("Error establish Connection.");
-                        break;
+                if (msg.startsWith("connected")){
+                    systemLog("Successfully Connected");
+                    btName.setText(mConnectedDeviceName);
+                    scanQR_Code.setText("Bluetooth Disconnect");
+                    scanQR_Code.setClickable(true);
+                    startNFC();
+                } else if (msg.startsWith("refused")){
+                    systemLog("Connection refused.");
+                    scanQR_Code.setText("Bluetooth Connect");
+                    scanQR_Code.setClickable(true);
+                    btName.setText("Not Connected");
+                    keepScreenOn(false);
+                } else if (msg.startsWith("application_stop")){
+                    mChatService.stop();
+                    mConversationArrayAdapter.clear();
+                    systemLog("Connection Stopped.");
+                } else {
+                    systemLog("Error establish Connection.");
                 }
                 break;
             /** Smartcard Message*/
@@ -581,17 +599,23 @@ public class MainActivity extends Activity {
                         systemLog("SC << " + byteToHexString(resp));
                     }
 
-                    sendNewMessage(2, byteToString(resp));
+                    sendNewMessage(id, 2, byteToString(resp));
                 } else{
-                    sendNewMessage(3, "scIsDisconnected");
+                    sendNewMessage(id, 3, "scIsDisconnected");
                 }
                 break;
             case 3:
                 if( myNFCTag.isConnected() ) {
-                    sendNewMessage(3, "scIsConnected");
+                    sendNewMessage(id, 3, "scIsConnected");
                 } else{
-                    sendNewMessage(3, "scIsDisconnected");
+                    sendNewMessage(id, 3, "scIsDisconnected");
                 }
+                break;
+            case 4:
+                sendNewMessage(id, 4, msg);
+                break;
+            case 5:
+                sendNewMessage(id, 4, "connected");
                 break;
             /** Catch if there is an Error*/
             default:
@@ -633,7 +657,7 @@ public class MainActivity extends Activity {
                 nfcAdapter.disableForegroundDispatch(this);
             }
 
-            sendNewMessage(1, "application_stop");
+            sendNewMessage(0, 1, "application_stop");
             mChatService.stop();
             keepScreenOn(false);
             return;
