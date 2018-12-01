@@ -482,7 +482,6 @@ public class MainActivity extends Activity {
                             scanQR_Code.setClickable(true);
                             btName.setText("Not Connected");
                             btDevice = null;
-
                             connectionStoped();
                             break;
                     }
@@ -638,6 +637,7 @@ public class MainActivity extends Activity {
             nfcAdapter.disableForegroundDispatch(this);
             nfcAdapter = null;
         }
+        encryptData = false;
         keepScreenOn(false);
     }
 
