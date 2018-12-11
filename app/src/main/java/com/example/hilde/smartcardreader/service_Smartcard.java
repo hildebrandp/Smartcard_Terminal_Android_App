@@ -20,9 +20,8 @@ import java.util.Timer;
 import java.util.TimerTask;
 
 /**
- * Created by hilde on 14.02.2018.
+ * Service Class checks if Smartcard is still connected
  */
-
 public class service_Smartcard extends Service {
 
     private final IBinder mBinder = new MyBinder();

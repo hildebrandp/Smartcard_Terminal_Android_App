@@ -40,7 +40,7 @@ public class service_Bluetooth {
     public static final int STATE_CONNECTED = 3;  // now connected to a remote device
 
     /**
-     * Constructor. Prepares a new Bluetooth session.
+     * Constructor. Creates a new Bluetooth session.
      * @param context  The UI Activity Context
      * @param handler  A Handler to send messages back to the UI Activity
      */
@@ -52,7 +52,7 @@ public class service_Bluetooth {
 
     /**
      * Set the current state of the chat connection
-     * @param state  An integer defining the current connection state
+     * @param state  connection state
      */
     private synchronized void setState(int state) {
         if (D) Log.d(TAG, "setState() " + mState + " -> " + state);
@@ -63,14 +63,15 @@ public class service_Bluetooth {
     }
 
     /**
-     * Return the current connection state. */
+     * Return connection state.
+     */
     public synchronized int getState() {
         return mState;
     }
 
     /**
-     * Start the chat service. Specifically start AcceptThread to begin a
-     * session in listening (server) mode. Called by the Activity onResume() */
+     * Start the Bluetooth service
+     */
     public synchronized void start() {
         if (D) Log.d(TAG, "start");
 
@@ -89,8 +90,8 @@ public class service_Bluetooth {
     }
 
     /**
-     * Start the ConnectThread to initiate a connection to a remote device.
-     * @param device  The BluetoothDevice to connect
+     * Start the ConnectThread
+     * @param device  The BluetoothDevice-Address to connect
      */
     public synchronized void connect(BluetoothDevice device) {
         if (D) Log.d(TAG, "connect to: " + device);
@@ -110,9 +111,9 @@ public class service_Bluetooth {
     }
 
     /**
-     * Start the ConnectedThread to begin managing a Bluetooth connection
-     * @param socket  The BluetoothSocket on which the connection was made
-     * @param device  The BluetoothDevice that has been connected
+     * Start the ConnectedThread to begin Bluetooth connection
+     * @param socket  BluetoothSocket on which the connection was made
+     * @param device  BluetoothDevice that has been connected
      */
     public synchronized void connected(BluetoothSocket socket, BluetoothDevice device) {
         if (D) Log.d(TAG, "connected");
@@ -152,8 +153,8 @@ public class service_Bluetooth {
     }
 
     /**
-     * Write to the ConnectedThread in an unsynchronized manner
-     * @param out The bytes to write
+     * Write unsynchronized to the ConnectedThread
+     * @param out bytes to write
      * @see ConnectedThread#write(byte[])
      */
     public void write(byte[] out) {
@@ -169,7 +170,7 @@ public class service_Bluetooth {
     }
 
     /**
-     * Indicate that the connection attempt failed and notify the UI Activity.
+     * Connection failed, set new state
      */
     private void connectionFailed() {
         setState(STATE_LISTEN);
@@ -183,7 +184,7 @@ public class service_Bluetooth {
     }
 
     /**
-     * Indicate that the connection was lost and notify the UI Activity.
+     * Connection lost, set new state
      */
     private void connectionLost() {
         setState(STATE_LISTEN);
@@ -197,9 +198,8 @@ public class service_Bluetooth {
     }
 
     /**
-     * This thread runs while attempting to make an outgoing connection
-     * with a device. It runs straight through; the connection either
-     * succeeds or fails.
+     * Connect Thread
+     * Runs always in Background
      */
     private class ConnectThread extends Thread {
         private BluetoothSocket mmSocket;
@@ -276,8 +276,8 @@ public class service_Bluetooth {
     }
 
     /**
-     * This thread runs during a connection with a remote device.
-     * It handles all incoming and outgoing transmissions.
+     * Thread runs while Connected
+     * Handles all incoming and outgoing transmissions.
      */
     private class ConnectedThread extends Thread {
         private final BluetoothSocket mmSocket;

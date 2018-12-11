@@ -38,6 +38,9 @@ import java.io.IOException;
 import java.text.SimpleDateFormat;
 import java.util.Date;
 
+/**
+ * Main Class
+ */
 public class MainActivity extends Activity {
 
     private EditText btName;
@@ -90,6 +93,9 @@ public class MainActivity extends Activity {
     public String[][] mTechLists;
     public IntentFilter[] mFilters;
 
+    /**
+     * BroadcastReceiver for receiving message if smartcard is disconnected
+     */
     private BroadcastReceiver smartcarddisconnect = new BroadcastReceiver() {
         @Override
         public void onReceive(Context context, Intent intent) {
@@ -106,6 +112,9 @@ public class MainActivity extends Activity {
         }
     };
 
+    /**
+     * Method for stopping service_Smartcard Thread
+     */
     private void stopSCservice() {
         if(isMyServiceRunning(service_Smartcard.class.getName())){
             stopService(new Intent(this, service_Smartcard.class));
@@ -113,6 +122,10 @@ public class MainActivity extends Activity {
 
     }
 
+    /**
+     * Method for set flag to keep screen awake
+     * @param screen if true Display stays on
+     */
     public void keepScreenOn(boolean screen) {
         if (screen) {
             getWindow().addFlags(WindowManager.LayoutParams.FLAG_KEEP_SCREEN_ON);
@@ -123,6 +136,10 @@ public class MainActivity extends Activity {
         }
     }
 
+    /**
+     * OnCreate Method load Interface
+     * @param savedInstanceState
+     */
     @Override
     protected void onCreate(Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
@@ -153,6 +170,9 @@ public class MainActivity extends Activity {
         mConversationView.setAdapter(mConversationArrayAdapter);
     }
 
+    /**
+     * Method for starting the Barcode-Scanner App
+     */
     private void scanQR_Code(){
         if (scanQR_Code.getText().equals("Bluetooth Connect")) {
             IntentIntegrator scanIntegrator = new IntentIntegrator(this);
@@ -166,6 +186,12 @@ public class MainActivity extends Activity {
 
     }
 
+    /**
+     * Method that receives Data from Barcode-Scanner App
+     * @param requestCode
+     * @param resultCode 0 if no Data read
+     * @param intent Object with scanned Data
+     */
     public void onActivityResult(int requestCode, int resultCode, Intent intent) {
         IntentResult scanningResult = IntentIntegrator.parseActivityResult(requestCode, resultCode, intent);
 
@@ -203,10 +229,16 @@ public class MainActivity extends Activity {
         }
     }
 
+    /**
+     * Method that creates IntentFilter for NFC-Module
+     * registers Reciever for new Smartcards
+     * enables ForegroudDispatch
+     */
     private void startNFC() {
         nfcAdapter = NfcAdapter.getDefaultAdapter(this);
 
-        mPendingIntent = PendingIntent.getActivity(this, 0, new Intent(this, getClass()).addFlags(Intent.FLAG_ACTIVITY_SINGLE_TOP), 0);
+        mPendingIntent = PendingIntent.getActivity(this, 0,
+                new Intent(this, getClass()).addFlags(Intent.FLAG_ACTIVITY_SINGLE_TOP), 0);
         IntentFilter ndef = new IntentFilter(NfcAdapter.ACTION_TAG_DISCOVERED);
 
         try {
@@ -235,6 +267,10 @@ public class MainActivity extends Activity {
         resolveIntent(intent);
     }
 
+    /**
+     * Method which is called when new Smartcard is detected
+     * @param intent
+     */
     private void resolveIntent(Intent intent) {
         String action = intent.getAction();
 
@@ -293,6 +329,11 @@ public class MainActivity extends Activity {
         return sb.toString();
     }
 
+    /**
+     * COnverts String Data to Byte-Array
+     * @param data String Data
+     * @return byte-Array with Hex-Data
+     */
     public static byte[] hexToByteArray(String data) {
 
         String hexchars = "0123456789abcdef";
@@ -312,6 +353,11 @@ public class MainActivity extends Activity {
         return hex;
     }
 
+    /**
+     * Converts Byte-Array to String
+     * @param dataToConvert
+     * @return
+     */
     public static String byteToString(byte[] dataToConvert) {
         StringBuilder sb = new StringBuilder();
         for ( byte b : dataToConvert ) {
@@ -320,6 +366,11 @@ public class MainActivity extends Activity {
         return sb.toString();
     }
 
+    /**
+     * Send APDU to Smartcard and receive response
+     * @param dataToSend Data which is send to smartcard
+     * @return response from smartcard
+     */
     public static byte[] sendandReciveData(byte[] dataToSend) {
         byte[] resp = null;
 
@@ -335,6 +386,11 @@ public class MainActivity extends Activity {
         return resp;
     }
 
+    /**
+     * Method that checks if Service is running
+     * @param className Name of Class which should bechecked
+     * @return true if Service is running
+     */
     private boolean isMyServiceRunning(String className) {
         ActivityManager manager = (ActivityManager)getSystemService(Context.ACTIVITY_SERVICE);
         for (ActivityManager.RunningServiceInfo service : manager.getRunningServices(Integer.MAX_VALUE)) {
@@ -345,6 +401,9 @@ public class MainActivity extends Activity {
         return false;
     }
 
+    /**
+     * Create Bluetooth Object
+     */
     private void setupBT(){
         // Initialize the BluetoothChatService to perform bluetooth connections
         mChatService = new service_Bluetooth(this, mHandler);
@@ -353,6 +412,10 @@ public class MainActivity extends Activity {
         mOutStringBuffer = new StringBuffer("");
     }
 
+    /**
+     * Enable on start Bluetooth if not already enabled
+     * Create NFCManager object
+     */
     @Override
     protected void onStart() {
         super.onStart();
@@ -399,6 +462,10 @@ public class MainActivity extends Activity {
         }
     }
 
+    /**
+     * Start ChatService when Display is on
+     * if Bluetooth connected start nfc
+     */
     @Override
     protected synchronized void onResume() {
         super.onResume();
@@ -412,10 +479,15 @@ public class MainActivity extends Activity {
             if (mChatService.getState() == service_Bluetooth.STATE_NONE) {
                 // Start the Bluetooth chat services
                 mChatService.start();
+            } else if (mChatService.getState() == service_Bluetooth.STATE_CONNECTED){
+                startNFC();
             }
         }
     }
 
+    /**
+     * Stop every service when closing application
+     */
     @Override
     protected void onDestroy() {
         super.onDestroy();
@@ -434,6 +506,10 @@ public class MainActivity extends Activity {
         connectionStoped();
     }
 
+    /**
+     * Method for create new systemlod entry
+     * @param msg
+     */
     private void systemLog(String msg) {
         SimpleDateFormat sdf = new SimpleDateFormat("HH:mm:ss");
         String currentDateandTime = sdf.format(new Date());
@@ -442,7 +518,10 @@ public class MainActivity extends Activity {
         mConversationArrayAdapter.insert(currentDateandTime + " >> " + msg, 0);
     }
 
-    // The Handler that gets information back from the BluetoothChatService
+    /**
+     * The Handler that gets information back from the BluetoothChatService
+     * This Method receives state changes from Bluetooth module
+     */
     private final Handler mHandler = new Handler() {
         @Override
         public void handleMessage(Message msg) {
@@ -517,7 +596,7 @@ public class MainActivity extends Activity {
     };
 
     /**
-     * Sends a message.
+     * Sends a Bluetooth message.
      * @param message  A string of text to send.
      */
     public void sendNewMessage(int id, int code, String message) {
@@ -548,11 +627,22 @@ public class MainActivity extends Activity {
         }
     }
 
+    /**
+     * Method is called when new message is received
+     * Splits message and sends data to checkMessage
+     * @param message
+     */
     private void receiveMessage(String message) {
         String msg[] = message.split(">>");
         checkMessage(Integer.valueOf(msg[0]), Integer.valueOf(msg[1]), msg[2]);
     }
 
+    /**
+     * Method that checks received messages
+     * @param id ID of message
+     * @param code Code of Message
+     * @param msg Message
+     */
     private void checkMessage(int id, int code, String msg) {
         if (encryptData){
             try {
@@ -623,6 +713,9 @@ public class MainActivity extends Activity {
         }
     }
 
+    /**
+     * Stop Bluetooth connection
+     */
     private void connectionStoped() {
         if(smartcarddisconnect != null) {
             try {
@@ -641,6 +734,10 @@ public class MainActivity extends Activity {
         keepScreenOn(false);
     }
 
+    /**
+     * Handle Back pressed event
+     * Close App if pressed 2 times
+     */
     @Override
     public void onBackPressed() {
         //Überprüfe ob Methode schonmal aufgerufen wurde, wenn ja dann schließe die Activity
